@@ -1,38 +1,39 @@
-name: Deploy Vite + React Application
-
+name: Deploy
 on:
   push:
     branches:
-      - main  # Change this to your deployment branch
-
+      - main
 jobs:
-  deploy:
+  build:
+    name: Build
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '18'  # Change to your required Node.js version
-
-    - name: Install Dependencies
-      run: npm install
-
-    - name: Build Application
-      run: npm run build  # Builds the Vite app
-
-    - name: Deploy to Server
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH key to GitHub Secrets
-        USERNAME: ${{ secrets.SSH_USERNAME }}  # Your SSH username
-        HOST: ${{ secrets.SSH_HOST }}  # Your server's IP or hostname
-      run: |
-        echo "$SSH_PRIVATE_KEY" > private_key
-        chmod 600 private_key
-        # Copy the build directory to the server
-        scp -o StrictHostKeyChecking=no -i private_key -r ./dist/* $USERNAME@$HOST:/path/to/deploy  # Change this path
-        # Optional: Restart your server or serve the app
-        ssh -o StrictHostKeyChecking=no -i private_key $USERNAME@$HOST "cd /path/to/deploy && npm install"  # Adjust as needed
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+      - name: Install dependencies
+        uses: bahmutov/npm-install@v1
+      - name: Build project
+        run: npm run build
+      - name: Upload production-ready build files
+        uses: actions/upload-artifact@v3
+        with:
+          name: production-files
+          path: ./dist
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: production-files
+          path: ./dist
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
