@@ -1,0 +1,38 @@
+name: Deploy Vite + React Application
+
+on:
+  push:
+    branches:
+      - main  # Change this to your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'  # Change to your required Node.js version
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Application
+      run: npm run build  # Builds the Vite app
+
+    - name: Deploy to Server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH key to GitHub Secrets
+        USERNAME: ${{ secrets.SSH_USERNAME }}  # Your SSH username
+        HOST: ${{ secrets.SSH_HOST }}  # Your server's IP or hostname
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key
+        chmod 600 private_key
+        # Copy the build directory to the server
+        scp -o StrictHostKeyChecking=no -i private_key -r ./dist/* $USERNAME@$HOST:/path/to/deploy  # Change this path
+        # Optional: Restart your server or serve the app
+        ssh -o StrictHostKeyChecking=no -i private_key $USERNAME@$HOST "cd /path/to/deploy && npm install"  # Adjust as needed
